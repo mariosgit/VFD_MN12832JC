@@ -22,10 +22,10 @@ const byte pinGSIN = 9;
 const byte pinPWM = 20;
 
 // Create an IntervalTimer object 
-#ifdef __STM32F1__
-HardwareTimer timer(2);
-#else
-IntervalTimer myTimer;
+#ifdef ARDUINO_ARCH_STM32
+HardwareTimer timer(TIM3);
+#else // teensy ??
+IntervalTimer timer;
 #endif
 
 MN12832JC *MN12832JC::_the  = nullptr;
@@ -65,7 +65,11 @@ void MN12832JC::begin()
     digitalWrite(pinGSIN, LOW);
 
     SPI.setMOSI(SDCARD_MOSI_PIN);
+#ifdef ARDUINO_ARCH_STM32 // aaahhhh :(
+    SPI.setSCLK(SDCARD_SCK_PIN);
+#else
     SPI.setSCK(SDCARD_SCK_PIN);
+#endif
     SPI.begin();
 
     pinMode(pinPWM , OUTPUT);
@@ -83,7 +87,13 @@ void MN12832JC::begin()
 
     SPI.beginTransaction(settingsA);
 
-    myTimer.begin(displayRefresh, 100);
+#ifdef ARDUINO_ARCH_STM32
+    timer.setOverflow(100, MICROSEC_FORMAT);
+    timer.attachInterrupt([](HardwareTimer *timer) { displayRefresh(); });
+#else
+    timer.begin(displayRefresh, 100);
+#endif
+
 }
 
 void MN12832JC::drawPixel(int16_t x, int16_t y, uint16_t color) {
